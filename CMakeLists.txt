@@ -17,6 +17,7 @@ add_executable(ttodo
         src/Main.cpp
         src/TodoApp.cpp
         src/TaskList.cpp
+        src/TaskDetails.cpp
         src/TaskInputWindow.cpp
         src/HelpBar.cpp
 )

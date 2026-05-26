@@ -12,6 +12,7 @@
 
 #include "AppState.h"
 #include "HelpBar.h"
+#include "TaskDetails.h"
 #include "TaskInputWindow.h"
 #include "TaskList.h"
 
@@ -41,8 +42,14 @@ void ToggleSelectedTaskCompletion(AppState &state) {
   }
 
   Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-  task.status = task.status == TaskStatus::Completed ? TaskStatus::Created
-                                                     : TaskStatus::Completed;
+  if (task.status == TaskStatus::Completed) {
+    task.status = TaskStatus::Created;
+    task.statusChangedAt.reset();
+    return;
+  }
+
+  task.status = TaskStatus::Completed;
+  task.statusChangedAt = std::chrono::system_clock::now();
 }
 
 void ToggleSelectedTaskProgress(AppState &state) {
@@ -51,8 +58,14 @@ void ToggleSelectedTaskProgress(AppState &state) {
   }
 
   Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-  task.status = task.status == TaskStatus::InProgress ? TaskStatus::Created
-                                                      : TaskStatus::InProgress;
+  if (task.status == TaskStatus::InProgress) {
+    task.status = TaskStatus::Created;
+    task.statusChangedAt.reset();
+    return;
+  }
+
+  task.status = TaskStatus::InProgress;
+  task.statusChangedAt = std::chrono::system_clock::now();
 }
 
 void ToggleSelectedTaskDeprecated(AppState &state) {
@@ -61,8 +74,14 @@ void ToggleSelectedTaskDeprecated(AppState &state) {
   }
 
   Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-  task.status = task.status == TaskStatus::Deprecated ? TaskStatus::Created
-                                                      : TaskStatus::Deprecated;
+  if (task.status == TaskStatus::Deprecated) {
+    task.status = TaskStatus::Created;
+    task.statusChangedAt.reset();
+    return;
+  }
+
+  task.status = TaskStatus::Deprecated;
+  task.statusChangedAt = std::chrono::system_clock::now();
 }
 
 } // namespace
@@ -73,6 +92,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   auto state = std::make_shared<AppState>();
 
   auto taskList = MakeTaskList(*state);
+  auto taskDetails = MakeTaskDetails(*state);
   auto inputWindow = MakeTaskInputWindow(*state);
   auto helpBar = MakeHelpBar(*state);
 
@@ -89,6 +109,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       state->tasks.push_back({
           .title = title,
           .status = TaskStatus::Created,
+          .createdAt = std::chrono::system_clock::now(),
       });
       state->selectedTask = static_cast<int>(state->tasks.size()) - 1;
     }
@@ -102,8 +123,13 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   };
 
   auto renderer = Renderer(eventTarget, [=] {
-    Element mainWindow = vbox({
+    Element content = hbox({
         taskList->Render() | flex,
+        taskDetails->Render(),
+    });
+
+    Element mainWindow = vbox({
+        content | flex,
         state->showHelp ? helpBar->Render() : emptyElement(),
     });
 
