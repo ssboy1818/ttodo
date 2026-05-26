@@ -142,6 +142,6 @@ ftxui::Component MakeTaskList(AppState &state) {
                     : menu->Render() | vscroll_indicator | frame | flex;
     }
 
-    return window(text("Tasks"), content) | flex;
+    return window(text("ttodo"), content) | flex;
   });
 }

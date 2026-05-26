@@ -15,16 +15,16 @@ namespace {
 std::string TaskStatusName(TaskStatus status) {
   switch (status) {
   case TaskStatus::Created:
-    return "Created";
+    return "created";
   case TaskStatus::InProgress:
-    return "In progress";
+    return "pending";
   case TaskStatus::Completed:
-    return "Completed";
+    return "completed";
   case TaskStatus::Deprecated:
-    return "Deprecated";
+    return "deprecated";
   }
 
-  return "Unknown";
+  return "unknown";
 }
 
 std::string FormatTimestamp(std::chrono::system_clock::time_point timestamp) {
@@ -37,12 +37,70 @@ std::string FormatTimestamp(std::chrono::system_clock::time_point timestamp) {
   return output.str();
 }
 
+struct TaskStats {
+  int total = 0;
+  int created = 0;
+  int inProgress = 0;
+  int completed = 0;
+  int deprecated = 0;
+};
+
+TaskStats CalculateTaskStats(const AppState &state) {
+  TaskStats stats;
+  stats.total = static_cast<int>(state.tasks.size());
+
+  for (const Task &task : state.tasks) {
+    switch (task.status) {
+    case TaskStatus::Created:
+      ++stats.created;
+      break;
+    case TaskStatus::InProgress:
+      ++stats.inProgress;
+      break;
+    case TaskStatus::Completed:
+      ++stats.completed;
+      break;
+    case TaskStatus::Deprecated:
+      ++stats.deprecated;
+      break;
+    }
+  }
+
+  return stats;
+}
+
+std::string CountText(int count) { return std::to_string(count); }
+
 ftxui::Element DetailRow(const std::string &label, const std::string &value) {
   using namespace ftxui;
 
-  return vbox({
+  return hbox({
       text(label) | dim,
       paragraph(value),
+  });
+}
+
+ftxui::Element StatsView(const TaskStats &stats) {
+  using namespace ftxui;
+
+  const float progress = stats.total == 0
+                             ? 0.0F
+                             : static_cast<float>(stats.completed) /
+                                   static_cast<float>(stats.total);
+
+  return vbox({
+      hbox({text("Total") | dim, filler(), text(CountText(stats.total))}),
+      hbox({text("Created") | dim, filler(), text(CountText(stats.created))}),
+      hbox({text("In progress") | dim, filler(),
+            text(CountText(stats.inProgress))}),
+      hbox({text("Completed") | dim, filler(),
+            text(CountText(stats.completed))}),
+      hbox({text("Deprecated") | dim, filler(),
+            text(CountText(stats.deprecated))}),
+      separator(),
+      hbox({text("Progress") | dim, filler(),
+            text(std::to_string(static_cast<int>(progress * 100.0F)) + "%")}),
+      gauge(progress),
   });
 }
 
@@ -52,14 +110,17 @@ ftxui::Component MakeTaskDetails(AppState &state) {
   using namespace ftxui;
 
   return Renderer([&state] {
+    const TaskStats stats = CalculateTaskStats(state);
+
     if (state.tasks.empty()) {
-      return window(text("Details"),
+      return window(text("statistic"),
                     vbox({
-                        filler(),
+                        StatsView(stats),
+                        separator(),
                         text("No selected task") | center | dim,
                         filler(),
                     })) |
-             size(WIDTH, EQUAL, 24);
+             size(WIDTH, EQUAL, 36);
     }
 
     const int selectedTask = std::clamp(
@@ -67,23 +128,22 @@ ftxui::Component MakeTaskDetails(AppState &state) {
     const Task &task = state.tasks[static_cast<size_t>(selectedTask)];
 
     Elements rows{
-        DetailRow("Title", task.title),
+        StatsView(stats),
         separator(),
-        DetailRow("Status", TaskStatusName(task.status)),
-        separator(),
-        DetailRow("Created at", FormatTimestamp(task.createdAt)),
+        DetailRow("title: ", task.title),
+        DetailRow("status: ", TaskStatusName(task.status)),
+        DetailRow("created at: ", FormatTimestamp(task.createdAt)),
     };
 
     if (task.status != TaskStatus::Created &&
         task.statusChangedAt.has_value()) {
-      rows.push_back(separator());
-      rows.push_back(DetailRow(TaskStatusName(task.status) + " at",
+      rows.push_back(DetailRow(TaskStatusName(task.status) + " at: ",
                                FormatTimestamp(*task.statusChangedAt)));
     }
 
     rows.push_back(filler());
 
-    return window(text("Details"), vbox(std::move(rows))) |
+    return window(text("statistic"), vbox(std::move(rows))) |
            size(WIDTH, EQUAL, 36);
   });
 }
