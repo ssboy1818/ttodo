@@ -20,7 +20,7 @@ add_executable(ttodo
         src/TaskDetails.cpp
         src/TaskInputWindow.cpp
         src/DeleteConfirmationWindow.cpp
-        src/HelpBar.cpp
+        src/HelpWindow.cpp
 )
 
 target_include_directories(ttodo PRIVATE include)

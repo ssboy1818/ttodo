@@ -4,4 +4,4 @@
 
 #include "AppState.h"
 
-ftxui::Component MakeHelpBar(AppState &state);
+ftxui::Component MakeHelpWindow(AppState &state);

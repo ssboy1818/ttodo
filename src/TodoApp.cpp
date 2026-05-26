@@ -13,7 +13,7 @@
 
 #include "AppState.h"
 #include "DeleteConfirmationWindow.h"
-#include "HelpBar.h"
+#include "HelpWindow.h"
 #include "TaskDetails.h"
 #include "TaskInputWindow.h"
 #include "TaskList.h"
@@ -38,9 +38,7 @@ bool HasSelectedTask(const AppState &state) {
          state.selectedTask < static_cast<int>(state.tasks.size());
 }
 
-int TaskStatusSortRank(TaskStatus status) {
-  return static_cast<int>(status);
-}
+int TaskStatusSortRank(TaskStatus status) { return static_cast<int>(status); }
 
 void RestoreSelectedTask(AppState &state, int selectedTaskId) {
   for (size_t index = 0; index < state.tasks.size(); ++index) {
@@ -138,7 +136,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   auto taskDetails = MakeTaskDetails(*state);
   auto inputWindow = MakeTaskInputWindow(*state);
   auto deleteConfirmationWindow = MakeDeleteConfirmationWindow(*state);
-  auto helpBar = MakeHelpBar(*state);
+  auto helpWindow = MakeHelpWindow(*state);
 
   auto eventTarget = Container::Tab(
       {
@@ -183,17 +181,17 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
         taskDetails->Render(),
     });
 
-    Element mainWindow = vbox({
-        content | flex,
-        state->showHelp ? helpBar->Render() : emptyElement(),
-    });
+    Element mainWindow = content | flex;
 
-    if (!state->showInput && !state->showDeleteConfirmation) {
+    if (!state->showInput && !state->showDeleteConfirmation &&
+        !state->showHelp) {
       return mainWindow;
     }
 
     Element modal = state->showInput ? inputWindow->Render()
-                                     : deleteConfirmationWindow->Render();
+                    : state->showDeleteConfirmation
+                        ? deleteConfirmationWindow->Render()
+                        : helpWindow->Render();
 
     return dbox({
         mainWindow | dim,
@@ -230,6 +228,14 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       return true;
     }
 
+    if (state->showHelp) {
+      if (event == Event::Escape || event == Event::Character('h')) {
+        state->showHelp = false;
+        return true;
+      }
+      return true;
+    }
+
     if (event == Event::Character('n')) {
       state->draftTask.clear();
       state->showInput = true;
@@ -237,7 +243,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       return true;
     }
     if (event == Event::Character('h')) {
-      state->showHelp = !state->showHelp;
+      state->showHelp = true;
       return true;
     }
     if (event == Event::Character('g')) {
