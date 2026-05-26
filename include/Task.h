@@ -13,6 +13,7 @@ enum class TaskStatus {
 
 struct Task {
   std::string title;
+  int id = 0;
   TaskStatus status = TaskStatus::Created;
   std::chrono::system_clock::time_point createdAt;
   std::optional<std::chrono::system_clock::time_point> statusChangedAt;

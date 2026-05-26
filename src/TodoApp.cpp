@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -31,31 +32,95 @@ std::string Trim(std::string value) {
   return value;
 }
 
+bool HasSelectedTask(const AppState &state) {
+  return state.selectedTask >= 0 &&
+         state.selectedTask < static_cast<int>(state.tasks.size());
+}
+
+int TaskStatusSortRank(TaskStatus status) {
+  switch (status) {
+  case TaskStatus::Created:
+    return 0;
+  case TaskStatus::InProgress:
+    return 1;
+  case TaskStatus::Completed:
+    return 2;
+  case TaskStatus::Deprecated:
+    return 3;
+  }
+
+  return 4;
+}
+
+void RestoreSelectedTask(AppState &state, int selectedTaskId) {
+  for (size_t index = 0; index < state.tasks.size(); ++index) {
+    if (state.tasks[index].id == selectedTaskId) {
+      state.selectedTask = static_cast<int>(index);
+      return;
+    }
+  }
+
+  state.selectedTask =
+      std::clamp(state.selectedTask, 0,
+                 std::max(0, static_cast<int>(state.tasks.size()) - 1));
+}
+
+void SortTasksByStatus(AppState &state) {
+  const int selectedTaskId =
+      HasSelectedTask(state)
+          ? state.tasks[static_cast<size_t>(state.selectedTask)].id
+          : 0;
+
+  std::ranges::stable_sort(state.tasks,
+                           [](const Task &left, const Task &right) {
+                             return TaskStatusSortRank(left.status) <
+                                    TaskStatusSortRank(right.status);
+                           });
+
+  RestoreSelectedTask(state, selectedTaskId);
+}
+
 void ChangeTaskStatus(AppState &state) {
+  if (!HasSelectedTask(state)) {
+    return;
+  }
+
   Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
 
   switch (task.status) {
-    case TaskStatus::Created:
-      task.statusChangedAt = std::chrono::system_clock::now();
-      task.status = TaskStatus::InProgress;
-      break;
-    case TaskStatus::InProgress:
-      task.statusChangedAt = std::chrono::system_clock::now();
-      task.status = TaskStatus::Completed;
-      break;
-    case TaskStatus::Completed:
-    case TaskStatus::Deprecated:
-      task.status = TaskStatus::Created;
-      task.statusChangedAt.reset();
-      break;
+  case TaskStatus::Created:
+    task.statusChangedAt = std::chrono::system_clock::now();
+    task.status = TaskStatus::InProgress;
+    break;
+  case TaskStatus::InProgress:
+    task.statusChangedAt = std::chrono::system_clock::now();
+    task.status = TaskStatus::Completed;
+    break;
+  case TaskStatus::Completed:
+  case TaskStatus::Deprecated:
+    task.status = TaskStatus::Created;
+    task.statusChangedAt.reset();
+    break;
+  }
+
+  if (state.showGroupedTasks) {
+    SortTasksByStatus(state);
   }
 }
 
 void ToggleTaskDeprecated(AppState &state) {
+  if (!HasSelectedTask(state)) {
+    return;
+  }
+
   Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
 
   task.status = TaskStatus::Deprecated;
   task.statusChangedAt = std::chrono::system_clock::now();
+
+  if (state.showGroupedTasks) {
+    SortTasksByStatus(state);
+  }
 }
 
 } // namespace
@@ -82,10 +147,14 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     if (!title.empty()) {
       state->tasks.push_back({
           .title = title,
+          .id = state->nextTaskId++,
           .status = TaskStatus::Created,
           .createdAt = std::chrono::system_clock::now(),
       });
-      // state->selectedTask = static_cast<int>(state->tasks.size()) - 1;
+      state->selectedTask = static_cast<int>(state->tasks.size()) - 1;
+      if (state->showGroupedTasks) {
+        SortTasksByStatus(*state);
+      }
     }
     state->draftTask.clear();
     state->showInput = false;
@@ -146,9 +215,12 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     }
     if (event == Event::Character('g')) {
       state->showGroupedTasks = !state->showGroupedTasks;
+      if (state->showGroupedTasks) {
+        SortTasksByStatus(*state);
+      }
       return true;
     }
-    if (event == Event::Return) {
+    if (event == Event::Character(' ')) {
       ChangeTaskStatus(*state);
       return true;
     }

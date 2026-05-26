@@ -12,13 +12,12 @@ ftxui::Component MakeHelpBar(AppState &state) {
     }
 
     return hbox({
-               text(" n ") | bold,       text("new"),          separatorEmpty(),
-               text(" h ") | bold,       text("hide help"),    separatorEmpty(),
-               text(" s ") | bold,       text("group"),        separatorEmpty(),
-               text(" Enter ") | bold,   text("done/created"), separatorEmpty(),
-               text(" p ") | bold,       text("progress"),     separatorEmpty(),
-               text(" d ") | bold,       text("deprecated"),   separatorEmpty(),
-               text(" q ") | bold,       text("quit"),         separatorEmpty(),
+               text(" n ") | bold,       text("new"),         separatorEmpty(),
+               text(" h ") | bold,       text("hide help"),   separatorEmpty(),
+               text(" g ") | bold,       text("group"),       separatorEmpty(),
+               text(" Space ") | bold,   text("next status"), separatorEmpty(),
+               text(" d ") | bold,       text("deprecated"),  separatorEmpty(),
+               text(" q ") | bold,       text("quit"),        separatorEmpty(),
                text(" Up/Down ") | bold, text("select"),
            }) |
            border;
