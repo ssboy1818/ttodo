@@ -18,6 +18,7 @@
 #include "TaskDetails.h"
 #include "TaskInputWindow.h"
 #include "TaskList.h"
+#include "TaskStorage.h"
 
 namespace {
 
@@ -100,6 +101,8 @@ void ChangeTaskStatus(AppState &state) {
   if (state.showGroupedTasks) {
     SortTasksByStatus(state);
   }
+
+  SaveTasks(state);
 }
 
 void DeleteSelectedTask(AppState &state) {
@@ -109,6 +112,7 @@ void DeleteSelectedTask(AppState &state) {
 
   state.tasks.erase(state.tasks.begin() + state.selectedTask);
   ClampSelectedTask(state);
+  SaveTasks(state);
 }
 
 void ToggleTaskDeprecated(AppState &state) {
@@ -124,6 +128,8 @@ void ToggleTaskDeprecated(AppState &state) {
   if (state.showGroupedTasks) {
     SortTasksByStatus(state);
   }
+
+  SaveTasks(state);
 }
 
 } // namespace
@@ -132,6 +138,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   using namespace ftxui;
 
   auto state = std::make_shared<AppState>();
+  LoadTasks(*state);
 
   auto taskList = MakeTaskList(*state);
   auto taskDetails = MakeTaskDetails(*state);
@@ -160,6 +167,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       if (state->showGroupedTasks) {
         SortTasksByStatus(*state);
       }
+      SaveTasks(*state);
     }
     state->draftTask.clear();
     state->showInput = false;
