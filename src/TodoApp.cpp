@@ -31,54 +31,28 @@ std::string Trim(std::string value) {
   return value;
 }
 
-bool HasSelectedTask(const AppState &state) {
-  return state.selectedTask >= 0 &&
-         state.selectedTask < static_cast<int>(state.tasks.size());
+void ChangeTaskStatus(AppState &state) {
+  Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
+
+  switch (task.status) {
+    case TaskStatus::Created:
+      task.statusChangedAt = std::chrono::system_clock::now();
+      task.status = TaskStatus::InProgress;
+      break;
+    case TaskStatus::InProgress:
+      task.statusChangedAt = std::chrono::system_clock::now();
+      task.status = TaskStatus::Completed;
+      break;
+    case TaskStatus::Completed:
+    case TaskStatus::Deprecated:
+      task.status = TaskStatus::Created;
+      task.statusChangedAt.reset();
+      break;
+  }
 }
 
-void ToggleSelectedTaskCompletion(AppState &state) {
-  if (!HasSelectedTask(state)) {
-    return;
-  }
-
+void ToggleTaskDeprecated(AppState &state) {
   Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-  if (task.status == TaskStatus::Completed) {
-    task.status = TaskStatus::Created;
-    task.statusChangedAt.reset();
-    return;
-  }
-
-  task.status = TaskStatus::Completed;
-  task.statusChangedAt = std::chrono::system_clock::now();
-}
-
-void ToggleSelectedTaskProgress(AppState &state) {
-  if (!HasSelectedTask(state)) {
-    return;
-  }
-
-  Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-  if (task.status == TaskStatus::InProgress) {
-    task.status = TaskStatus::Created;
-    task.statusChangedAt.reset();
-    return;
-  }
-
-  task.status = TaskStatus::InProgress;
-  task.statusChangedAt = std::chrono::system_clock::now();
-}
-
-void ToggleSelectedTaskDeprecated(AppState &state) {
-  if (!HasSelectedTask(state)) {
-    return;
-  }
-
-  Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-  if (task.status == TaskStatus::Deprecated) {
-    task.status = TaskStatus::Created;
-    task.statusChangedAt.reset();
-    return;
-  }
 
   task.status = TaskStatus::Deprecated;
   task.statusChangedAt = std::chrono::system_clock::now();
@@ -111,7 +85,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
           .status = TaskStatus::Created,
           .createdAt = std::chrono::system_clock::now(),
       });
-      state->selectedTask = static_cast<int>(state->tasks.size()) - 1;
+      // state->selectedTask = static_cast<int>(state->tasks.size()) - 1;
     }
     state->draftTask.clear();
     state->showInput = false;
@@ -170,16 +144,16 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       state->showHelp = !state->showHelp;
       return true;
     }
-    if (event == Event::Return) {
-      ToggleSelectedTaskCompletion(*state);
+    if (event == Event::Character('g')) {
+      state->showGroupedTasks = !state->showGroupedTasks;
       return true;
     }
-    if (event == Event::Character('p')) {
-      ToggleSelectedTaskProgress(*state);
+    if (event == Event::Return) {
+      ChangeTaskStatus(*state);
       return true;
     }
     if (event == Event::Character('d')) {
-      ToggleSelectedTaskDeprecated(*state);
+      ToggleTaskDeprecated(*state);
       return true;
     }
     if (event == Event::Character('q')) {
