@@ -13,6 +13,7 @@ struct AppState {
   int activeComponent = 0;
   bool showHelp = true;
   bool showInput = false;
+  bool showDeleteConfirmation = false;
   bool showGroupedTasks = false;
   std::string draftTask;
 };

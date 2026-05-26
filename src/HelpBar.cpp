@@ -17,6 +17,7 @@ ftxui::Component MakeHelpBar(AppState &state) {
                text(" g ") | bold,       text("group"),       separatorEmpty(),
                text(" Space ") | bold,   text("next status"), separatorEmpty(),
                text(" d ") | bold,       text("deprecated"),  separatorEmpty(),
+               text(" Ctrl+D ") | bold,  text("delete"),      separatorEmpty(),
                text(" q ") | bold,       text("quit"),        separatorEmpty(),
                text(" Up/Down ") | bold, text("select"),
            }) |

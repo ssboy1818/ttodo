@@ -12,6 +12,7 @@
 #include <ftxui/dom/elements.hpp>
 
 #include "AppState.h"
+#include "DeleteConfirmationWindow.h"
 #include "HelpBar.h"
 #include "TaskDetails.h"
 #include "TaskInputWindow.h"
@@ -38,18 +39,7 @@ bool HasSelectedTask(const AppState &state) {
 }
 
 int TaskStatusSortRank(TaskStatus status) {
-  switch (status) {
-  case TaskStatus::Created:
-    return 0;
-  case TaskStatus::InProgress:
-    return 1;
-  case TaskStatus::Completed:
-    return 2;
-  case TaskStatus::Deprecated:
-    return 3;
-  }
-
-  return 4;
+  return static_cast<int>(status);
 }
 
 void RestoreSelectedTask(AppState &state, int selectedTaskId) {
@@ -71,13 +61,18 @@ void SortTasksByStatus(AppState &state) {
           ? state.tasks[static_cast<size_t>(state.selectedTask)].id
           : 0;
 
-  std::ranges::stable_sort(state.tasks,
-                           [](const Task &left, const Task &right) {
-                             return TaskStatusSortRank(left.status) <
-                                    TaskStatusSortRank(right.status);
-                           });
+  std::ranges::stable_sort(state.tasks, [](const Task &left,
+                                           const Task &right) {
+    return TaskStatusSortRank(left.status) < TaskStatusSortRank(right.status);
+  });
 
   RestoreSelectedTask(state, selectedTaskId);
+}
+
+void ClampSelectedTask(AppState &state) {
+  state.selectedTask =
+      std::clamp(state.selectedTask, 0,
+                 std::max(0, static_cast<int>(state.tasks.size()) - 1));
 }
 
 void ChangeTaskStatus(AppState &state) {
@@ -108,6 +103,15 @@ void ChangeTaskStatus(AppState &state) {
   }
 }
 
+void DeleteSelectedTask(AppState &state) {
+  if (!HasSelectedTask(state)) {
+    return;
+  }
+
+  state.tasks.erase(state.tasks.begin() + state.selectedTask);
+  ClampSelectedTask(state);
+}
+
 void ToggleTaskDeprecated(AppState &state) {
   if (!HasSelectedTask(state)) {
     return;
@@ -133,6 +137,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   auto taskList = MakeTaskList(*state);
   auto taskDetails = MakeTaskDetails(*state);
   auto inputWindow = MakeTaskInputWindow(*state);
+  auto deleteConfirmationWindow = MakeDeleteConfirmationWindow(*state);
   auto helpBar = MakeHelpBar(*state);
 
   auto eventTarget = Container::Tab(
@@ -165,6 +170,13 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     state->showInput = false;
   };
 
+  auto cancelDelete = [state] { state->showDeleteConfirmation = false; };
+
+  auto confirmDelete = [state] {
+    DeleteSelectedTask(*state);
+    state->showDeleteConfirmation = false;
+  };
+
   auto renderer = Renderer(eventTarget, [=] {
     Element content = hbox({
         taskList->Render() | flex,
@@ -176,13 +188,16 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
         state->showHelp ? helpBar->Render() : emptyElement(),
     });
 
-    if (!state->showInput) {
+    if (!state->showInput && !state->showDeleteConfirmation) {
       return mainWindow;
     }
 
+    Element modal = state->showInput ? inputWindow->Render()
+                                     : deleteConfirmationWindow->Render();
+
     return dbox({
         mainWindow | dim,
-        inputWindow->Render() | clear_under | center | vcenter,
+        modal | clear_under | center | vcenter,
     });
   });
 
@@ -201,6 +216,18 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
         return true;
       }
       return false;
+    }
+
+    if (state->showDeleteConfirmation) {
+      if (event == Event::Escape) {
+        cancelDelete();
+        return true;
+      }
+      if (event == Event::Return) {
+        confirmDelete();
+        return true;
+      }
+      return true;
     }
 
     if (event == Event::Character('n')) {
@@ -226,6 +253,12 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     }
     if (event == Event::Character('d')) {
       ToggleTaskDeprecated(*state);
+      return true;
+    }
+    if (event == Event::CtrlD) {
+      if (HasSelectedTask(*state)) {
+        state->showDeleteConfirmation = true;
+      }
       return true;
     }
     if (event == Event::Character('q')) {
