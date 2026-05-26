@@ -13,7 +13,15 @@ FetchContent_Declare(ftxui
 )
 FetchContent_MakeAvailable(ftxui)
 
-add_executable(ttodo main.cpp)
+add_executable(ttodo
+        src/Main.cpp
+        src/TodoApp.cpp
+        src/TaskList.cpp
+        src/TaskInputWindow.cpp
+        src/HelpBar.cpp
+)
+
+target_include_directories(ttodo PRIVATE include)
 
 target_link_libraries(ttodo PRIVATE
         ftxui::screen
