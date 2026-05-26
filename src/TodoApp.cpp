@@ -14,6 +14,7 @@
 #include "AppState.h"
 #include "DeleteConfirmationWindow.h"
 #include "HelpWindow.h"
+#include "StatusLine.h"
 #include "TaskDetails.h"
 #include "TaskInputWindow.h"
 #include "TaskList.h"
@@ -137,6 +138,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   auto inputWindow = MakeTaskInputWindow(*state);
   auto deleteConfirmationWindow = MakeDeleteConfirmationWindow(*state);
   auto helpWindow = MakeHelpWindow(*state);
+  auto statusLine = MakeStatusLine();
 
   auto eventTarget = Container::Tab(
       {
@@ -181,7 +183,10 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
         taskDetails->Render(),
     });
 
-    Element mainWindow = content | flex;
+    Element mainWindow = vbox({
+        statusLine->Render(),
+        content | flex,
+    });
 
     if (!state->showInput && !state->showDeleteConfirmation &&
         !state->showHelp) {
