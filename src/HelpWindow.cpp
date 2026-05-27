@@ -10,6 +10,8 @@ ftxui::Component MakeHelpWindow(AppState &state) {
     return window(text("Help"),
                   vbox({
                       hbox({text("n") | bold, text("       new task")}),
+                      hbox({text("t") | bold, text("       new tag")}),
+                      hbox({text("Enter") | bold, text("   manage task tags")}),
                       hbox({text("g") | bold, text("       group by status")}),
                       hbox({text("Space") | bold, text("   next status")}),
                       hbox({text("d") | bold, text("       deprecated")}),

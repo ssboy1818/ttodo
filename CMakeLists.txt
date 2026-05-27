@@ -19,6 +19,8 @@ add_executable(ttodo
         src/TaskList.cpp
         src/TaskDetails.cpp
         src/TaskInputWindow.cpp
+        src/TagInputWindow.cpp
+        src/TagManagerWindow.cpp
         src/DeleteConfirmationWindow.cpp
         src/HelpWindow.cpp
         src/StatusLine.cpp

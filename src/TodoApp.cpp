@@ -15,6 +15,8 @@
 #include "DeleteConfirmationWindow.h"
 #include "HelpWindow.h"
 #include "StatusLine.h"
+#include "TagInputWindow.h"
+#include "TagManagerWindow.h"
 #include "TaskDetails.h"
 #include "TaskInputWindow.h"
 #include "TaskList.h"
@@ -132,6 +134,31 @@ void ToggleTaskDeprecated(AppState &state) {
   SaveTasks(state);
 }
 
+void ClampSelectedTag(AppState &state) {
+  state.selectedTag =
+      std::clamp(state.selectedTag, 0,
+                 std::max(0, static_cast<int>(state.tags.size()) - 1));
+}
+
+void ToggleSelectedTaskTag(AppState &state) {
+  if (!HasSelectedTask(state) || state.tags.empty()) {
+    return;
+  }
+
+  ClampSelectedTag(state);
+
+  Task &task = stateТеперь если вы уехали и ругаете власть.tasks[static_cast<size_t>(state.selectedTask)];
+  const int tagId = state.tags[static_cast<size_t>(state.selectedTag)].id;
+  auto tag = std::ranges::find(task.tagIds, tagId);
+  if (tag == task.tagIds.end()) {
+    task.tagIds.push_back(tagId);
+  } else {
+    task.tagIds.erase(tag);
+  }
+
+  SaveTasks(state);
+}
+
 } // namespace
 
 ftxui::Component MakeTodoApp(ftxui::Closure quit) {
@@ -143,6 +170,8 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   auto taskList = MakeTaskList(*state);
   auto taskDetails = MakeTaskDetails(*state);
   auto inputWindow = MakeTaskInputWindow(*state);
+  auto tagInputWindow = MakeTagInputWindow(*state);
+  auto tagManagerWindow = MakeTagManagerWindow(*state);
   auto deleteConfirmationWindow = MakeDeleteConfirmationWindow(*state);
   auto helpWindow = MakeHelpWindow(*state);
   auto statusLine = MakeStatusLine();
@@ -151,6 +180,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       {
           taskList,
           inputWindow,
+          tagInputWindow,
       },
       &state->activeComponent);
 
@@ -178,6 +208,25 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     state->showInput = false;
   };
 
+  auto submitTag = [state] {
+    std::string name = Trim(state->draftTag);
+    if (!name.empty()) {
+      state->tags.push_back({
+          .name = name,
+          .id = state->nextTagId++,
+      });
+      state->selectedTag = static_cast<int>(state->tags.size()) - 1;
+      SaveTasks(*state);
+    }
+    state->draftTag.clear();
+    state->showTagInput = false;
+  };
+
+  auto cancelTagInput = [state] {
+    state->draftTag.clear();
+    state->showTagInput = false;
+  };
+
   auto cancelDelete = [state] { state->showDeleteConfirmation = false; };
 
   auto confirmDelete = [state] {
@@ -196,12 +245,14 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
         content | flex,
     });
 
-    if (!state->showInput && !state->showDeleteConfirmation &&
-        !state->showHelp) {
+    if (!state->showInput && !state->showTagInput && !state->showTagManager &&
+        !state->showDeleteConfirmation && !state->showHelp) {
       return mainWindow;
     }
 
-    Element modal = state->showInput ? inputWindow->Render()
+    Element modal = state->showInput        ? inputWindow->Render()
+                    : state->showTagInput   ? tagInputWindow->Render()
+                    : state->showTagManager ? tagManagerWindow->Render()
                     : state->showDeleteConfirmation
                         ? deleteConfirmationWindow->Render()
                         : helpWindow->Render();
@@ -213,7 +264,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
   });
 
   return CatchEvent(renderer, [=](Event event) {
-    state->activeComponent = state->showInput ? 1 : 0;
+    state->activeComponent = state->showInput ? 1 : state->showTagInput ? 2 : 0;
 
     if (state->showInput) {
       if (event == Event::Escape) {
@@ -227,6 +278,49 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
         return true;
       }
       return false;
+    }
+
+    if (state->showTagInput) {
+      if (event == Event::Escape) {
+        cancelTagInput();
+        state->activeComponent = 0;
+        return true;
+      }
+      if (event == Event::Return) {
+        submitTag();
+        state->activeComponent = 0;
+        return true;
+      }
+      return false;
+    }
+
+    if (state->showTagManager) {
+      if (event == Event::Escape || event == Event::Return) {
+        state->showTagManager = false;
+        return true;
+      }
+      if (event == Event::Character('t')) {
+        state->draftTag.clear();
+        state->showTagManager = false;
+        state->showTagInput = true;
+        state->activeComponent = 2;
+        return true;
+      }
+      if (event == Event::ArrowUp) {
+        state->selectedTag = std::max(0, state->selectedTag - 1);
+        return true;
+      }
+      if (event == Event::ArrowDown) {
+        state->selectedTag =
+            std::min(std::max(0, static_cast<int>(state->tags.size()) - 1),
+                     state->selectedTag + 1);
+        return true;
+      }
+      if (event == Event::Character(' ')) {
+        ToggleSelectedTaskTag(*state);
+        return true;
+      }
+      return true;
     }
 
     if (state->showDeleteConfirmation) {
@@ -253,6 +347,18 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       state->draftTask.clear();
       state->showInput = true;
       state->activeComponent = 1;
+      return true;
+    }
+    if (event == Event::Character('t')) {
+      state->draftTag.clear();
+      state->showTagInput = true;
+      state->activeComponent = 2;
+      return true;
+    }
+    if (event == Event::Return) {
+      if (HasSelectedTask(*state)) {
+        state->showTagManager = true;
+      }
       return true;
     }
     if (event == Event::Character('h')) {

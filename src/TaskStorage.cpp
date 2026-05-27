@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@ std::filesystem::path StoragePath() {
   const char *home = std::getenv("HOME");
 
   std::filesystem::path base =
-      xdgDataHome != nullptr && std::string(xdgDataHome).size() > 0
+      xdgDataHome != nullptr && !std::string(xdgDataHome).empty()
           ? std::filesystem::path(xdgDataHome)
           : std::filesystem::path(home != nullptr ? home : ".") /
                 ".local/share";
@@ -118,27 +119,83 @@ TaskStatus ParseStatus(const std::string &value) {
   return static_cast<TaskStatus>(status);
 }
 
-std::optional<Task> ParseTask(const std::string &line) {
-  const std::vector<std::string> fields = SplitTabs(line);
-  if (fields.size() != 5) {
-    return std::nullopt;
+std::vector<int> ParseTagIds(const std::string &value) {
+  std::vector<int> tagIds;
+  std::stringstream stream(value);
+  std::string tagId;
+
+  while (std::getline(stream, tagId, ',')) {
+    if (tagId.empty()) {
+      continue;
+    }
+
+    try {
+      tagIds.push_back(std::stoi(tagId));
+    } catch (const std::exception &) {
+    }
   }
 
+  return tagIds;
+}
+
+std::string JoinTagIds(const std::vector<int> &tagIds) {
+  std::string result;
+
+  for (int tagId : tagIds) {
+    if (!result.empty()) {
+      result += ",";
+    }
+    result += std::to_string(tagId);
+  }
+
+  return result;
+}
+
+std::optional<Task> ParseTaskFields(const std::vector<std::string> &fields,
+                                    size_t offset) {
   try {
-    const long long statusChangedAt = std::stoll(fields[4]);
+    const long long statusChangedAt = std::stoll(fields[offset + 4]);
 
     Task task{
-        .title = UnescapeField(fields[1]),
-        .id = std::stoi(fields[0]),
-        .status = ParseStatus(fields[2]),
-        .createdAt = FromEpochSeconds(std::stoll(fields[3])),
+        .title = UnescapeField(fields[offset + 1]),
+        .id = std::stoi(fields[offset]),
+        .status = ParseStatus(fields[offset + 2]),
+        .createdAt = FromEpochSeconds(std::stoll(fields[offset + 3])),
         .statusChangedAt =
             statusChangedAt > 0
                 ? std::make_optional(FromEpochSeconds(statusChangedAt))
                 : std::nullopt,
+        .tagIds = fields.size() > offset + 5 ? ParseTagIds(fields[offset + 5])
+                                             : std::vector<int>{},
     };
 
     return task;
+  } catch (const std::exception &) {
+    return std::nullopt;
+  }
+}
+
+std::optional<Task> ParseTask(const std::vector<std::string> &fields) {
+  if (fields.size() == 5) {
+    return ParseTaskFields(fields, 0);
+  }
+  if ((fields.size() == 6 || fields.size() == 7) && fields[0] == "TASK") {
+    return ParseTaskFields(fields, 1);
+  }
+
+  return std::nullopt;
+}
+
+std::optional<Tag> ParseTag(const std::vector<std::string> &fields) {
+  if (fields.size() != 3 || fields[0] != "TAG") {
+    return std::nullopt;
+  }
+
+  try {
+    return Tag{
+        .name = UnescapeField(fields[2]),
+        .id = std::stoi(fields[1]),
+    };
   } catch (const std::exception &) {
     return std::nullopt;
   }
@@ -153,10 +210,19 @@ void LoadTasks(AppState &state) {
   }
 
   state.tasks.clear();
+  state.tags.clear();
 
   std::string line;
   while (std::getline(input, line)) {
-    std::optional<Task> task = ParseTask(line);
+    const std::vector<std::string> fields = SplitTabs(line);
+
+    std::optional<Tag> tag = ParseTag(fields);
+    if (tag.has_value()) {
+      state.tags.push_back(*tag);
+      continue;
+    }
+
+    std::optional<Task> task = ParseTask(fields);
     if (task.has_value()) {
       state.tasks.push_back(*task);
     }
@@ -167,7 +233,13 @@ void LoadTasks(AppState &state) {
     maxTaskId = std::max(maxTaskId, task.id);
   }
 
+  int maxTagId = 0;
+  for (const Tag &tag : state.tags) {
+    maxTagId = std::max(maxTagId, tag.id);
+  }
+
   state.nextTaskId = maxTaskId + 1;
+  state.nextTagId = maxTagId + 1;
   state.selectedTask = state.tasks.empty() ? 0 : 0;
 }
 
@@ -180,13 +252,17 @@ void SaveTasks(const AppState &state) {
     return;
   }
 
+  for (const Tag &tag : state.tags) {
+    output << "TAG" << '\t' << tag.id << '\t' << EscapeField(tag.name) << '\n';
+  }
+
   for (const Task &task : state.tasks) {
-    output << task.id << '\t' << EscapeField(task.title) << '\t'
-           << static_cast<int>(task.status) << '\t'
+    output << "TASK" << '\t' << task.id << '\t' << EscapeField(task.title)
+           << '\t' << static_cast<int>(task.status) << '\t'
            << ToEpochSeconds(task.createdAt) << '\t'
            << (task.statusChangedAt.has_value()
                    ? ToEpochSeconds(*task.statusChangedAt)
                    : 0)
-           << '\n';
+           << '\t' << JoinTagIds(task.tagIds) << '\n';
   }
 }

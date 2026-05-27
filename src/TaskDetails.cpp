@@ -4,6 +4,7 @@
 #include <ctime>
 #include <iomanip>
 #include <optional>
+#include <ranges>
 #include <sstream>
 #include <string>
 
@@ -71,6 +72,26 @@ TaskStats CalculateTaskStats(const AppState &state) {
 
 std::string CountText(int count) { return std::to_string(count); }
 
+std::string TaskTagsText(const AppState &state, const Task &task) {
+  std::string tags;
+
+  for (int tagId : task.tagIds) {
+    auto tag = std::ranges::find_if(state.tags, [tagId](const Tag &candidate) {
+      return candidate.id == tagId;
+    });
+    if (tag == state.tags.end()) {
+      continue;
+    }
+
+    if (!tags.empty()) {
+      tags += ", ";
+    }
+    tags += tag->name;
+  }
+
+  return tags.empty() ? "none" : tags;
+}
+
 ftxui::Element DetailRow(const std::string &label, const std::string &value) {
   using namespace ftxui;
 
@@ -132,6 +153,7 @@ ftxui::Component MakeTaskDetails(AppState &state) {
         separator(),
         DetailRow("title: ", task.title),
         DetailRow("status: ", TaskStatusName(task.status)),
+        DetailRow("tags: ", TaskTagsText(state, task)),
         DetailRow("created at: ", FormatTimestamp(task.createdAt)),
     };
 
