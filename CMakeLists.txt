@@ -15,6 +15,7 @@ FetchContent_MakeAvailable(ftxui)
 
 add_executable(ttodo
         src/Main.cpp
+        src/AppActions.cpp
         src/AppState.cpp
         src/Task.cpp
         src/TodoApp.cpp

@@ -1,16 +1,12 @@
 #include "TodoApp.h"
 
-#include <algorithm>
-#include <cctype>
-#include <chrono>
-#include <cstddef>
 #include <memory>
-#include <string>
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 
+#include "AppActions.h"
 #include "AppState.h"
 #include "DeleteConfirmationWindow.h"
 #include "HelpWindow.h"
@@ -24,120 +20,9 @@
 
 namespace {
 
-std::string Trim(std::string value) {
-  auto isSpace = [](unsigned char c) { return std::isspace(c) != 0; };
-
-  value.erase(value.begin(),
-              std::find_if(value.begin(), value.end(),
-                           [&](unsigned char c) { return !isSpace(c); }));
-  value.erase(std::find_if(value.rbegin(), value.rend(),
-                           [&](unsigned char c) { return !isSpace(c); })
-                  .base(),
-              value.end());
-  return value;
-}
-
-int TaskStatusSortRank(TaskStatus status) { return static_cast<int>(status); }
-
-void RestoreSelectedTask(AppState &state, int selectedTaskId) {
-  for (size_t index = 0; index < state.tasks.size(); ++index) {
-    if (state.tasks[index].id == selectedTaskId) {
-      state.selectedTask = static_cast<int>(index);
-      return;
-    }
-  }
-
-  ClampSelectedTask(state);
-}
-
-void SortTasksByStatus(AppState &state) {
-  const int selectedTaskId =
-      HasSelectedTask(state)
-          ? state.tasks[static_cast<size_t>(state.selectedTask)].id
-          : 0;
-
-  std::ranges::stable_sort(state.tasks, [](const Task &left,
-                                           const Task &right) {
-    return TaskStatusSortRank(left.status) < TaskStatusSortRank(right.status);
-  });
-
-  RestoreSelectedTask(state, selectedTaskId);
-}
-
-void ChangeTaskStatus(AppState &state) {
-  if (!HasSelectedTask(state)) {
-    return;
-  }
-
-  Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-
-  switch (task.status) {
-  case TaskStatus::Created:
-    task.statusChangedAt = std::chrono::system_clock::now();
-    task.status = TaskStatus::InProgress;
-    break;
-  case TaskStatus::InProgress:
-    task.statusChangedAt = std::chrono::system_clock::now();
-    task.status = TaskStatus::Completed;
-    break;
-  case TaskStatus::Completed:
-  case TaskStatus::Deprecated:
-    task.status = TaskStatus::Created;
-    task.statusChangedAt.reset();
-    break;
-  }
-
-  if (state.showGroupedTasks) {
-    SortTasksByStatus(state);
-  }
-
-  SaveTasks(state);
-}
-
-void DeleteSelectedTask(AppState &state) {
-  if (!HasSelectedTask(state)) {
-    return;
-  }
-
-  state.tasks.erase(state.tasks.begin() + state.selectedTask);
-  ClampSelectedTask(state);
-  SaveTasks(state);
-}
-
-void ToggleTaskDeprecated(AppState &state) {
-  if (!HasSelectedTask(state)) {
-    return;
-  }
-
-  Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-
-  task.status = TaskStatus::Deprecated;
-  task.statusChangedAt = std::chrono::system_clock::now();
-
-  if (state.showGroupedTasks) {
-    SortTasksByStatus(state);
-  }
-
-  SaveTasks(state);
-}
-
-void ToggleSelectedTaskTag(AppState &state) {
-  if (!HasSelectedTask(state) || state.tags.empty()) {
-    return;
-  }
-
-  ClampSelectedTag(state);
-
-  Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
-  const int tagId = state.tags[static_cast<size_t>(state.selectedTag)].id;
-  if (!TaskHasTag(task, tagId)) {
-    task.tagIds.push_back(tagId);
-  } else {
-    auto tag = std::ranges::find(task.tagIds, tagId);
-    task.tagIds.erase(tag);
-  }
-
-  SaveTasks(state);
+bool HasOpenModal(const AppState &state) {
+  return state.showInput || state.showTagInput || state.showTagManager ||
+         state.showDeleteConfirmation || state.showHelp;
 }
 
 } // namespace
@@ -162,58 +47,11 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
           taskList,
           inputWindow,
           tagInputWindow,
+          tagManagerWindow,
+          deleteConfirmationWindow,
+          helpWindow,
       },
       &state->activeComponent);
-
-  auto submitTask = [state] {
-    std::string title = Trim(state->draftTask);
-    if (!title.empty()) {
-      state->tasks.push_back({
-          .title = title,
-          .id = state->nextTaskId++,
-          .status = TaskStatus::Created,
-          .createdAt = std::chrono::system_clock::now(),
-      });
-      state->selectedTask = static_cast<int>(state->tasks.size()) - 1;
-      if (state->showGroupedTasks) {
-        SortTasksByStatus(*state);
-      }
-      SaveTasks(*state);
-    }
-    state->draftTask.clear();
-    state->showInput = false;
-  };
-
-  auto cancelInput = [state] {
-    state->draftTask.clear();
-    state->showInput = false;
-  };
-
-  auto submitTag = [state] {
-    std::string name = Trim(state->draftTag);
-    if (!name.empty()) {
-      state->tags.push_back({
-          .name = name,
-          .id = state->nextTagId++,
-      });
-      state->selectedTag = static_cast<int>(state->tags.size()) - 1;
-      SaveTasks(*state);
-    }
-    state->draftTag.clear();
-    state->showTagInput = false;
-  };
-
-  auto cancelTagInput = [state] {
-    state->draftTag.clear();
-    state->showTagInput = false;
-  };
-
-  auto cancelDelete = [state] { state->showDeleteConfirmation = false; };
-
-  auto confirmDelete = [state] {
-    DeleteSelectedTask(*state);
-    state->showDeleteConfirmation = false;
-  };
 
   auto renderer = Renderer(eventTarget, [=] {
     Element content = hbox({
@@ -244,106 +82,33 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     });
   });
 
-  return CatchEvent(renderer, [=](Event event) {
-    state->activeComponent = state->showInput ? 1 : state->showTagInput ? 2 : 0;
-
-    if (state->showInput) {
-      if (event == Event::Escape) {
-        cancelInput();
-        state->activeComponent = 0;
-        return true;
-      }
-      if (event == Event::Return) {
-        submitTask();
-        state->activeComponent = 0;
-        return true;
-      }
+  return renderer | CatchEvent([=](Event event) {
+    if (HasOpenModal(*state)) {
       return false;
-    }
-
-    if (state->showTagInput) {
-      if (event == Event::Escape) {
-        cancelTagInput();
-        state->activeComponent = 0;
-        return true;
-      }
-      if (event == Event::Return) {
-        submitTag();
-        state->activeComponent = 0;
-        return true;
-      }
-      return false;
-    }
-
-    if (state->showTagManager) {
-      if (event == Event::Escape || event == Event::Return) {
-        state->showTagManager = false;
-        return true;
-      }
-      if (event == Event::Character('t')) {
-        state->draftTag.clear();
-        state->showTagManager = false;
-        state->showTagInput = true;
-        state->activeComponent = 2;
-        return true;
-      }
-      if (event == Event::ArrowUp) {
-        state->selectedTag = std::max(0, state->selectedTag - 1);
-        return true;
-      }
-      if (event == Event::ArrowDown) {
-        state->selectedTag =
-            std::min(std::max(0, static_cast<int>(state->tags.size()) - 1),
-                     state->selectedTag + 1);
-        return true;
-      }
-      if (event == Event::Character(' ')) {
-        ToggleSelectedTaskTag(*state);
-        return true;
-      }
-      return true;
-    }
-
-    if (state->showDeleteConfirmation) {
-      if (event == Event::Escape) {
-        cancelDelete();
-        return true;
-      }
-      if (event == Event::Return) {
-        confirmDelete();
-        return true;
-      }
-      return true;
-    }
-
-    if (state->showHelp) {
-      if (event == Event::Escape || event == Event::Character('h')) {
-        state->showHelp = false;
-        return true;
-      }
-      return true;
     }
 
     if (event == Event::Character('n')) {
       state->draftTask.clear();
       state->showInput = true;
-      state->activeComponent = 1;
+      state->activeComponent = ActiveComponent::TaskInput;
       return true;
     }
     if (event == Event::Character('t')) {
       state->draftTag.clear();
       state->showTagInput = true;
-      state->activeComponent = 2;
+      state->activeComponent = ActiveComponent::TagInput;
       return true;
     }
     if (event == Event::Return) {
       if (HasSelectedTask(*state)) {
         state->showTagManager = true;
+        state->activeComponent = ActiveComponent::TagManager;
       }
       return true;
     }
     if (event == Event::Character('h')) {
       state->showHelp = true;
+      state->activeComponent = ActiveComponent::Help;
       return true;
     }
     if (event == Event::Character('g')) {
@@ -364,6 +129,7 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     if (event == Event::CtrlD) {
       if (HasSelectedTask(*state)) {
         state->showDeleteConfirmation = true;
+        state->activeComponent = ActiveComponent::DeleteConfirmation;
       }
       return true;
     }

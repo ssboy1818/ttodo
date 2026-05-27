@@ -1,12 +1,13 @@
 #include "HelpWindow.h"
 
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 
 ftxui::Component MakeHelpWindow(AppState &state) {
   using namespace ftxui;
 
-  return Renderer([&state] {
+  auto renderer = Renderer([&state](bool) {
     return window(text("Help"),
                   vbox({
                       hbox({text("n") | bold, text("       new task")}),
@@ -23,5 +24,14 @@ ftxui::Component MakeHelpWindow(AppState &state) {
                             text(" close help")}),
                   })) |
            size(WIDTH, GREATER_THAN, 34) | size(WIDTH, LESS_THAN, 60);
+  });
+
+  return CatchEvent(renderer, [&state](Event event) {
+    if (event == Event::Escape || event == Event::Character('h')) {
+      state.showHelp = false;
+      state.activeComponent = ActiveComponent::TaskList;
+      return true;
+    }
+    return true;
   });
 }

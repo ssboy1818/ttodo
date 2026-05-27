@@ -3,7 +3,10 @@
 #include <string>
 
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
+
+#include "AppActions.h"
 
 namespace {
 
@@ -21,7 +24,7 @@ std::string SelectedTaskTitle(const AppState &state) {
 ftxui::Component MakeDeleteConfirmationWindow(AppState &state) {
   using namespace ftxui;
 
-  return Renderer([&state] {
+  auto renderer = Renderer([&state](bool) {
     return window(text("Delete task"),
                   vbox({
                       paragraph("Delete \"" + SelectedTaskTitle(state) + "\"?"),
@@ -29,5 +32,20 @@ ftxui::Component MakeDeleteConfirmationWindow(AppState &state) {
                       text("Enter: delete  Esc: cancel") | dim,
                   })) |
            size(WIDTH, GREATER_THAN, 40) | size(WIDTH, LESS_THAN, 70);
+  });
+
+  return CatchEvent(renderer, [&state](Event event) {
+    if (event == Event::Escape) {
+      state.showDeleteConfirmation = false;
+      state.activeComponent = ActiveComponent::TaskList;
+      return true;
+    }
+    if (event == Event::Return) {
+      DeleteSelectedTask(state);
+      state.showDeleteConfirmation = false;
+      state.activeComponent = ActiveComponent::TaskList;
+      return true;
+    }
+    return false;
   });
 }

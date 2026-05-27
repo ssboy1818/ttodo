@@ -24,6 +24,15 @@ struct AppState {
   std::string draftTag;
 };
 
+namespace ActiveComponent {
+inline constexpr int TaskList = 0;
+inline constexpr int TaskInput = 1;
+inline constexpr int TagInput = 2;
+inline constexpr int TagManager = 3;
+inline constexpr int DeleteConfirmation = 4;
+inline constexpr int Help = 5;
+} // namespace ActiveComponent
+
 bool HasSelectedTask(const AppState &state);
 void ClampSelectedTask(AppState &state);
 void ClampSelectedTag(AppState &state);

@@ -3,12 +3,15 @@
 #include <string>
 
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
+
+#include "AppActions.h"
 
 ftxui::Component MakeTagManagerWindow(AppState &state) {
   using namespace ftxui;
 
-  return Renderer([&state] {
+  auto renderer = Renderer([&state](bool) {
     if (!HasSelectedTask(state)) {
       return window(text("Task tags"), text("No selected task") | dim) |
              size(WIDTH, GREATER_THAN, 36) | size(WIDTH, LESS_THAN, 64);
@@ -50,5 +53,33 @@ ftxui::Component MakeTagManagerWindow(AppState &state) {
                       text("Space: toggle  Enter/Esc: close") | dim,
                   })) |
            size(WIDTH, GREATER_THAN, 40) | size(WIDTH, LESS_THAN, 70);
+  });
+
+  return CatchEvent(renderer, [&state](Event event) {
+    if (event == Event::Escape || event == Event::Return) {
+      state.showTagManager = false;
+      state.activeComponent = ActiveComponent::TaskList;
+      return true;
+    }
+    if (event == Event::Character('t')) {
+      state.draftTag.clear();
+      state.showTagManager = false;
+      state.showTagInput = true;
+      state.activeComponent = ActiveComponent::TagInput;
+      return true;
+    }
+    if (event == Event::ArrowUp) {
+      MoveSelectedTag(state, -1);
+      return true;
+    }
+    if (event == Event::ArrowDown) {
+      MoveSelectedTag(state, 1);
+      return true;
+    }
+    if (event == Event::Character(' ')) {
+      ToggleSelectedTaskTag(state);
+      return true;
+    }
+    return true;
   });
 }
