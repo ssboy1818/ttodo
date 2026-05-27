@@ -37,11 +37,6 @@ std::string Trim(std::string value) {
   return value;
 }
 
-bool HasSelectedTask(const AppState &state) {
-  return state.selectedTask >= 0 &&
-         state.selectedTask < static_cast<int>(state.tasks.size());
-}
-
 int TaskStatusSortRank(TaskStatus status) { return static_cast<int>(status); }
 
 void RestoreSelectedTask(AppState &state, int selectedTaskId) {
@@ -52,9 +47,7 @@ void RestoreSelectedTask(AppState &state, int selectedTaskId) {
     }
   }
 
-  state.selectedTask =
-      std::clamp(state.selectedTask, 0,
-                 std::max(0, static_cast<int>(state.tasks.size()) - 1));
+  ClampSelectedTask(state);
 }
 
 void SortTasksByStatus(AppState &state) {
@@ -69,12 +62,6 @@ void SortTasksByStatus(AppState &state) {
   });
 
   RestoreSelectedTask(state, selectedTaskId);
-}
-
-void ClampSelectedTask(AppState &state) {
-  state.selectedTask =
-      std::clamp(state.selectedTask, 0,
-                 std::max(0, static_cast<int>(state.tasks.size()) - 1));
 }
 
 void ChangeTaskStatus(AppState &state) {
@@ -134,12 +121,6 @@ void ToggleTaskDeprecated(AppState &state) {
   SaveTasks(state);
 }
 
-void ClampSelectedTag(AppState &state) {
-  state.selectedTag =
-      std::clamp(state.selectedTag, 0,
-                 std::max(0, static_cast<int>(state.tags.size()) - 1));
-}
-
 void ToggleSelectedTaskTag(AppState &state) {
   if (!HasSelectedTask(state) || state.tags.empty()) {
     return;
@@ -147,12 +128,12 @@ void ToggleSelectedTaskTag(AppState &state) {
 
   ClampSelectedTag(state);
 
-  Task &task = stateТеперь если вы уехали и ругаете власть.tasks[static_cast<size_t>(state.selectedTask)];
+  Task &task = state.tasks[static_cast<size_t>(state.selectedTask)];
   const int tagId = state.tags[static_cast<size_t>(state.selectedTag)].id;
-  auto tag = std::ranges::find(task.tagIds, tagId);
-  if (tag == task.tagIds.end()) {
+  if (!TaskHasTag(task, tagId)) {
     task.tagIds.push_back(tagId);
   } else {
+    auto tag = std::ranges::find(task.tagIds, tagId);
     task.tagIds.erase(tag);
   }
 

@@ -13,21 +13,6 @@
 
 namespace {
 
-std::string TaskStatusName(TaskStatus status) {
-  switch (status) {
-  case TaskStatus::Created:
-    return "created";
-  case TaskStatus::InProgress:
-    return "pending";
-  case TaskStatus::Completed:
-    return "completed";
-  case TaskStatus::Deprecated:
-    return "deprecated";
-  }
-
-  return "unknown";
-}
-
 std::string FormatTimestamp(std::chrono::system_clock::time_point timestamp) {
   const std::time_t rawTime = std::chrono::system_clock::to_time_t(timestamp);
   std::tm localTime{};

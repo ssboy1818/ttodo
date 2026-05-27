@@ -1,23 +1,9 @@
 #include "TagManagerWindow.h"
 
-#include <algorithm>
 #include <string>
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
-
-namespace {
-
-bool HasSelectedTask(const AppState &state) {
-  return state.selectedTask >= 0 &&
-         state.selectedTask < static_cast<int>(state.tasks.size());
-}
-
-bool TaskHasTag(const Task &task, int tagId) {
-  return std::ranges::find(task.tagIds, tagId) != task.tagIds.end();
-}
-
-} // namespace
 
 ftxui::Component MakeTagManagerWindow(AppState &state) {
   using namespace ftxui;
@@ -40,9 +26,7 @@ ftxui::Component MakeTagManagerWindow(AppState &state) {
              size(WIDTH, GREATER_THAN, 36) | size(WIDTH, LESS_THAN, 64);
     }
 
-    state.selectedTag =
-        std::clamp(state.selectedTag, 0,
-                   std::max(0, static_cast<int>(state.tags.size()) - 1));
+    ClampSelectedTag(state);
 
     Elements rows;
     rows.reserve(state.tags.size());

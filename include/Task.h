@@ -25,3 +25,7 @@ struct Tag {
   std::string name;
   int id = 0;
 };
+
+std::string TaskStatusIcon(TaskStatus status);
+std::string TaskStatusName(TaskStatus status);
+bool TaskHasTag(const Task &task, int tagId);

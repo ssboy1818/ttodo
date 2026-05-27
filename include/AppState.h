@@ -23,3 +23,7 @@ struct AppState {
   std::string draftTask;
   std::string draftTag;
 };
+
+bool HasSelectedTask(const AppState &state);
+void ClampSelectedTask(AppState &state);
+void ClampSelectedTag(AppState &state);

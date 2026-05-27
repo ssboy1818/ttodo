@@ -9,36 +9,6 @@
 
 namespace {
 
-std::string TaskStatusIcon(TaskStatus status) {
-  switch (status) {
-  case TaskStatus::Created:
-    return "";
-  case TaskStatus::InProgress:
-    return "";
-  case TaskStatus::Completed:
-    return "";
-  case TaskStatus::Deprecated:
-    return "";
-  }
-
-  return "?";
-}
-
-std::string TaskStatusName(TaskStatus status) {
-  switch (status) {
-  case TaskStatus::Created:
-    return "Created";
-  case TaskStatus::InProgress:
-    return "In progress";
-  case TaskStatus::Completed:
-    return "Completed";
-  case TaskStatus::Deprecated:
-    return "Deprecated";
-  }
-
-  return "Unknown";
-}
-
 void RefreshTaskLabels(AppState &state) {
   state.taskLabels.clear();
   state.taskLabels.reserve(state.tasks.size());
