@@ -28,14 +28,12 @@ ftxui::Component MakeTaskInputWindow(AppState &state) {
   return CatchEvent(renderer, [&state](Event event) {
     if (event == Event::Escape) {
       state.draftTask.clear();
-      state.showInput = false;
       state.activeComponent = ActiveComponent::TaskList;
       return true;
     }
     if (event == Event::Return) {
       AddTask(state, state.draftTask);
       state.draftTask.clear();
-      state.showInput = false;
       state.activeComponent = ActiveComponent::TaskList;
       return true;
     }

@@ -13,8 +13,8 @@
 
 namespace {
 
-constexpr int kInputPane = 0;
-constexpr int kMenuPane = 1;
+constexpr int kMenuPane = 0;
+constexpr int kInputPane = 1;
 constexpr int kVisibleTagRows = 8;
 
 void RefreshTagLabels(const AppState &state,
@@ -48,8 +48,8 @@ ftxui::Component MakeTagInputWindow(AppState &state) {
 
   auto content = Container::Vertical(
       {
-          input,
           menu,
+          input,
       },
       focusedPane.get());
 
@@ -77,7 +77,6 @@ ftxui::Component MakeTagInputWindow(AppState &state) {
   return CatchEvent(renderer, [&state, focusedPane, input](Event event) {
     if (event == Event::Escape) {
       state.draftTag.clear();
-      state.showTagInput = false;
       state.activeComponent = ActiveComponent::TaskList;
       return true;
     }
@@ -89,7 +88,6 @@ ftxui::Component MakeTagInputWindow(AppState &state) {
       if (!state.tags.empty()) {
         state.deleteTarget = DeleteTarget::Tag;
         state.deleteReturnComponent = ActiveComponent::TagInput;
-        state.showDeleteConfirmation = true;
         state.activeComponent = ActiveComponent::DeleteConfirmation;
       }
       return true;

@@ -22,20 +22,33 @@ std::string Trim(std::string value) {
   return value;
 }
 
-int TaskStatusSortRank(TaskStatus status) { return static_cast<int>(status); }
+} // namespace
 
-void RestoreSelectedTask(AppState &state, int selectedTaskId) {
-  for (size_t index = 0; index < state.tasks.size(); ++index) {
-    if (state.tasks[index].id == selectedTaskId) {
-      state.selectedTask = static_cast<int>(index);
-      return;
-    }
+void RefreshTaskLabels(AppState &state) {
+  state.taskLabels.clear();
+  state.taskLabels.reserve(state.tasks.size());
+
+  for (const Task &task : state.tasks) {
+    state.taskLabels.push_back(TaskStatusIcon(task.status) + " " + task.title);
   }
-
-  ClampSelectedTask(state);
 }
 
-} // namespace
+void RefreshTagLabels(AppState &state) {
+  state.tagLabels.clear();
+  state.tagLabels.reserve(state.tags.size());
+
+  const Task *selectedTask =
+      HasSelectedTask(state)
+          ? &state.tasks[static_cast<size_t>(state.selectedTask)]
+          : nullptr;
+
+  for (const Tag &tag : state.tags) {
+    const bool checked =
+        selectedTask != nullptr && TaskHasTag(*selectedTask, tag.id);
+    state.tagLabels.push_back(std::string(checked ? "[x] " : "[ ] ") +
+                              tag.name);
+  }
+}
 
 void AddTask(AppState &state, std::string title) {
   title = Trim(std::move(title));
@@ -50,9 +63,7 @@ void AddTask(AppState &state, std::string title) {
       .createdAt = std::chrono::system_clock::now(),
   });
   state.selectedTask = static_cast<int>(state.tasks.size()) - 1;
-  if (state.showGroupedTasks) {
-    SortTasksByStatus(state);
-  }
+  RefreshTaskLabels(state);
   SaveTasks(state);
 }
 
@@ -79,10 +90,7 @@ void ChangeTaskStatus(AppState &state) {
     break;
   }
 
-  if (state.showGroupedTasks) {
-    SortTasksByStatus(state);
-  }
-
+  RefreshTaskLabels(state);
   SaveTasks(state);
 }
 
@@ -93,6 +101,8 @@ void DeleteSelectedTask(AppState &state) {
 
   state.tasks.erase(state.tasks.begin() + state.selectedTask);
   ClampSelectedTask(state);
+
+  RefreshTaskLabels(state);
   SaveTasks(state);
 }
 
@@ -106,25 +116,8 @@ void ToggleTaskDeprecated(AppState &state) {
   task.status = TaskStatus::Deprecated;
   task.statusChangedAt = std::chrono::system_clock::now();
 
-  if (state.showGroupedTasks) {
-    SortTasksByStatus(state);
-  }
-
+  RefreshTaskLabels(state);
   SaveTasks(state);
-}
-
-void SortTasksByStatus(AppState &state) {
-  const int selectedTaskId =
-      HasSelectedTask(state)
-          ? state.tasks[static_cast<size_t>(state.selectedTask)].id
-          : 0;
-
-  std::ranges::stable_sort(state.tasks, [](const Task &left,
-                                           const Task &right) {
-    return TaskStatusSortRank(left.status) < TaskStatusSortRank(right.status);
-  });
-
-  RestoreSelectedTask(state, selectedTaskId);
 }
 
 void AddTag(AppState &state, std::string name) {
@@ -138,18 +131,8 @@ void AddTag(AppState &state, std::string name) {
       .id = state.nextTagId++,
   });
   state.selectedTag = static_cast<int>(state.tags.size()) - 1;
+  RefreshTagLabels(state);
   SaveTasks(state);
-}
-
-void MoveSelectedTag(AppState &state, int delta) {
-  if (state.tags.empty()) {
-    state.selectedTag = 0;
-    return;
-  }
-
-  state.selectedTag =
-      std::clamp(state.selectedTag + delta, 0,
-                 static_cast<int>(state.tags.size()) - 1);
 }
 
 void DeleteSelectedTag(AppState &state) {
@@ -168,6 +151,7 @@ void DeleteSelectedTag(AppState &state) {
   }
 
   ClampSelectedTag(state);
+  RefreshTagLabels(state);
   SaveTasks(state);
 }
 
@@ -187,5 +171,6 @@ void ToggleSelectedTaskTag(AppState &state) {
     task.tagIds.erase(tag);
   }
 
+  RefreshTagLabels(state);
   SaveTasks(state);
 }

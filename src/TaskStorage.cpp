@@ -240,7 +240,7 @@ void LoadTasks(AppState &state) {
 
   state.nextTaskId = maxTaskId + 1;
   state.nextTagId = maxTagId + 1;
-  state.selectedTask = state.tasks.empty() ? 0 : 0;
+  state.selectedTask = 0;
 }
 
 void SaveTasks(const AppState &state) {

@@ -14,6 +14,7 @@ struct AppState {
   std::vector<Task> tasks;
   std::vector<Tag> tags;
   std::vector<std::string> taskLabels;
+  std::vector<std::string> tagLabels;
   int nextTaskId = 1;
   int nextTagId = 1;
   int selectedTask = 0;
@@ -21,12 +22,6 @@ struct AppState {
   int activeComponent = 0;
   int deleteReturnComponent = 0;
   DeleteTarget deleteTarget = DeleteTarget::Task;
-  bool showHelp = false;
-  bool showInput = false;
-  bool showTagInput = false;
-  bool showTagManager = false;
-  bool showDeleteConfirmation = false;
-  bool showGroupedTasks = false;
   std::string draftTask;
   std::string draftTag;
 };

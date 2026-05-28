@@ -46,7 +46,6 @@ ftxui::Element DeleteMessage(const AppState &state) {
 }
 
 void CloseDeleteConfirmation(AppState &state) {
-  state.showDeleteConfirmation = false;
   state.activeComponent = state.deleteReturnComponent;
 }
 

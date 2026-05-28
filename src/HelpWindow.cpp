@@ -13,7 +13,6 @@ ftxui::Component MakeHelpWindow(AppState &state) {
                       hbox({text("n") | bold, text("       new task")}),
                       hbox({text("t") | bold, text("       new tag")}),
                       hbox({text("Enter") | bold, text("   manage task tags")}),
-                      hbox({text("g") | bold, text("       group by status")}),
                       hbox({text("Space") | bold, text("   next status")}),
                       hbox({text("d") | bold, text("       deprecated")}),
                       hbox({text("Ctrl+D") | bold, text("  delete task/tag")}),
@@ -28,7 +27,6 @@ ftxui::Component MakeHelpWindow(AppState &state) {
 
   return CatchEvent(renderer, [&state](Event event) {
     if (event == Event::Escape || event == Event::Character('h')) {
-      state.showHelp = false;
       state.activeComponent = ActiveComponent::TaskList;
       return true;
     }

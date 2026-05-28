@@ -21,8 +21,7 @@
 namespace {
 
 bool HasOpenModal(const AppState &state) {
-  return state.showInput || state.showTagInput || state.showTagManager ||
-         state.showDeleteConfirmation || state.showHelp;
+  return state.activeComponent != ActiveComponent::TaskList;
 }
 
 } // namespace
@@ -64,17 +63,20 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
         content | flex,
     });
 
-    if (!state->showInput && !state->showTagInput && !state->showTagManager &&
-        !state->showDeleteConfirmation && !state->showHelp) {
+    if (!HasOpenModal(*state)) {
       return mainWindow;
     }
 
-    Element modal = state->showDeleteConfirmation
-                        ? deleteConfirmationWindow->Render()
-                    : state->showInput      ? inputWindow->Render()
-                    : state->showTagInput   ? tagInputWindow->Render()
-                    : state->showTagManager ? tagManagerWindow->Render()
-                                            : helpWindow->Render();
+    Element modal =
+        state->activeComponent == ActiveComponent::TaskInput
+            ? inputWindow->Render()
+        : state->activeComponent == ActiveComponent::TagInput
+            ? tagInputWindow->Render()
+        : state->activeComponent == ActiveComponent::TagManager
+            ? tagManagerWindow->Render()
+        : state->activeComponent == ActiveComponent::DeleteConfirmation
+            ? deleteConfirmationWindow->Render()
+            : helpWindow->Render();
 
     return dbox({
         mainWindow | dim,
@@ -89,33 +91,23 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
 
     if (event == Event::Character('n')) {
       state->draftTask.clear();
-      state->showInput = true;
       state->activeComponent = ActiveComponent::TaskInput;
       return true;
     }
     if (event == Event::Character('t')) {
       state->draftTag.clear();
-      state->showTagInput = true;
       state->activeComponent = ActiveComponent::TagInput;
       return true;
     }
     if (event == Event::Return) {
       if (HasSelectedTask(*state)) {
-        state->showTagManager = true;
+        RefreshTagLabels(*state);
         state->activeComponent = ActiveComponent::TagManager;
       }
       return true;
     }
     if (event == Event::Character('h')) {
-      state->showHelp = true;
       state->activeComponent = ActiveComponent::Help;
-      return true;
-    }
-    if (event == Event::Character('g')) {
-      state->showGroupedTasks = !state->showGroupedTasks;
-      if (state->showGroupedTasks) {
-        SortTasksByStatus(*state);
-      }
       return true;
     }
     if (event == Event::Character(' ')) {
@@ -130,7 +122,6 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       if (HasSelectedTask(*state)) {
         state->deleteTarget = DeleteTarget::Task;
         state->deleteReturnComponent = ActiveComponent::TaskList;
-        state->showDeleteConfirmation = true;
         state->activeComponent = ActiveComponent::DeleteConfirmation;
       }
       return true;
