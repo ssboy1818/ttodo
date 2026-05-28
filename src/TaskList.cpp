@@ -22,14 +22,10 @@ ftxui::Element TaskMenuEntry(const AppState &state,
       text(" " + entryState.label),
   });
 
-  if (entryState.focused) {
-    entry |= bgcolor(Color::GrayDark)
-          |  color(Color::Black);
-  }
   if (entryState.active) {
-    entry |= bold;
+    entry |= bgcolor(Color::GrayDark) | color(Color::Black) | bold;
   }
-  if (!entryState.focused && !entryState.active) {
+  if (!entryState.active) {
     entry |= dim;
   }
 

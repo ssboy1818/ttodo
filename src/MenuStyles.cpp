@@ -21,13 +21,10 @@ ftxui::Element TagMenuEntry(const ftxui::EntryState &entryState) {
   using namespace ftxui;
 
   Element entry = text((entryState.active ? "> " : "  ") + entryState.label);
-  if (entryState.focused) {
-    entry |= bgcolor(Color::GrayDark) | color(Color::Black);
-  }
   if (entryState.active) {
-    entry |= bold;
+    entry |= bgcolor(Color::GrayDark) | color(Color::Black) | bold;
   }
-  if (!entryState.focused && !entryState.active) {
+  if (!entryState.active) {
     entry |= dim;
   }
 
