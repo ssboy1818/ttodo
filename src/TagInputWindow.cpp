@@ -10,6 +10,7 @@
 #include <ftxui/dom/elements.hpp>
 
 #include "AppActions.h"
+#include "MenuStyles.h"
 
 namespace {
 
@@ -38,12 +39,20 @@ ftxui::Component MakeTagInputWindow(AppState &state) {
   auto input = Input({
       .content = &state.draftTag,
       .placeholder = "Enter tag name...",
+      .transform = TextInputEntry,
       .multiline = false,
   });
 
   auto menu = Menu({
       .entries = tagLabels.get(),
       .selected = &state.selectedTag,
+      .entries_option =
+          {
+              .transform =
+                  [](const EntryState &entryState) {
+                    return TagMenuEntry(entryState);
+                  },
+          },
   });
 
   auto content = Container::Vertical(

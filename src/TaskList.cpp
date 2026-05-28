@@ -3,8 +3,40 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
 
 #include "AppActions.h"
+#include "MenuStyles.h"
+
+namespace {
+
+ftxui::Element TaskMenuEntry(const AppState &state,
+                             const ftxui::EntryState &entryState) {
+  using namespace ftxui;
+
+  const TaskStatus status = state.tasks[entryState.index].status;
+
+  Element entry = hbox({
+      text(entryState.active ? "> " : "  "),
+      text(TaskStatusIcon(status)) | color(TaskStatusColor(status)),
+      text(" " + entryState.label),
+  });
+
+  if (entryState.focused) {
+    entry |= bgcolor(Color::GrayDark)
+          |  color(Color::Black);
+  }
+  if (entryState.active) {
+    entry |= bold;
+  }
+  if (!entryState.focused && !entryState.active) {
+    entry |= dim;
+  }
+
+  return entry;
+}
+
+} // namespace
 
 ftxui::Component MakeTaskList(AppState &state) {
   using namespace ftxui;
@@ -12,6 +44,13 @@ ftxui::Component MakeTaskList(AppState &state) {
   auto menu = Menu({
       .entries = &state.taskLabels,
       .selected = &state.selectedTask,
+      .entries_option =
+          {
+              .transform =
+                  [&state](const EntryState &entryState) {
+                    return TaskMenuEntry(state, entryState);
+                  },
+          },
   });
 
   RefreshTaskLabels(state);

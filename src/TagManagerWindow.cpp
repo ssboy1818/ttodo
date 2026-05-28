@@ -6,6 +6,7 @@
 #include <ftxui/dom/elements.hpp>
 
 #include "AppActions.h"
+#include "MenuStyles.h"
 
 ftxui::Component MakeTagManagerWindow(AppState &state) {
   using namespace ftxui;
@@ -13,6 +14,13 @@ ftxui::Component MakeTagManagerWindow(AppState &state) {
   auto menu = Menu({
       .entries = &state.tagLabels,
       .selected = &state.selectedTag,
+      .entries_option =
+          {
+              .transform =
+                  [](const EntryState &entryState) {
+                    return TagMenuEntry(entryState);
+                  },
+          },
   });
 
   auto renderer = Renderer(menu, [&state, menu] {

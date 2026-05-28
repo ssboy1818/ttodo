@@ -28,6 +28,7 @@ add_executable(ttodo
         src/HelpWindow.cpp
         src/StatusLine.cpp
         src/TaskStorage.cpp
+        src/MenuStyles.cpp
 )
 
 target_include_directories(ttodo PRIVATE include)

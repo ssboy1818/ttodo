@@ -29,7 +29,7 @@ void RefreshTaskLabels(AppState &state) {
   state.taskLabels.reserve(state.tasks.size());
 
   for (const Task &task : state.tasks) {
-    state.taskLabels.push_back(TaskStatusIcon(task.status) + " " + task.title);
+    state.taskLabels.push_back(task.title);
   }
 }
 

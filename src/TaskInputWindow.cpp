@@ -6,6 +6,7 @@
 #include <ftxui/dom/elements.hpp>
 
 #include "AppActions.h"
+#include "MenuStyles.h"
 
 ftxui::Component MakeTaskInputWindow(AppState &state) {
   using namespace ftxui;
@@ -13,6 +14,7 @@ ftxui::Component MakeTaskInputWindow(AppState &state) {
   auto input = Input({
       .content = &state.draftTask,
       .placeholder = "Enter task title...",
+      .transform = TextInputEntry,
       .multiline = false,
   });
 

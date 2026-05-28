@@ -10,6 +10,9 @@
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
+
+#include "MenuStyles.h"
 
 namespace {
 
@@ -86,6 +89,17 @@ ftxui::Element DetailRow(const std::string &label, const std::string &value) {
   });
 }
 
+ftxui::Element StatRow(const std::string &label, int count,
+                       ftxui::Color rowColor) {
+  using namespace ftxui;
+
+  return hbox({
+      text(label) | color(rowColor),
+      filler(),
+      text(CountText(count)) | color(rowColor) | bold,
+  });
+}
+
 ftxui::Element StatsView(const TaskStats &stats) {
   using namespace ftxui;
 
@@ -96,16 +110,16 @@ ftxui::Element StatsView(const TaskStats &stats) {
 
   return vbox({
       hbox({text("Total") | dim, filler(), text(CountText(stats.total))}),
-      hbox({text("Created") | dim, filler(), text(CountText(stats.created))}),
-      hbox({text("In progress") | dim, filler(),
-            text(CountText(stats.inProgress))}),
-      hbox({text("Completed") | dim, filler(),
-            text(CountText(stats.completed))}),
-      hbox({text("Deprecated") | dim, filler(),
-            text(CountText(stats.deprecated))}),
+      StatRow("Created", stats.created, TaskStatusColor(TaskStatus::Created)),
+      StatRow("In progress", stats.inProgress,
+              TaskStatusColor(TaskStatus::InProgress)),
+      StatRow("Completed", stats.completed,
+              TaskStatusColor(TaskStatus::Completed)),
+      StatRow("Deprecated", stats.deprecated,
+              TaskStatusColor(TaskStatus::Deprecated)),
       separator(),
       hbox({text("Progress") | dim, filler(),
-            text(std::to_string(static_cast<int>(progress * 100.0F)) + "%")}),
+            text(std::to_string(static_cast<int>(progress * 100.0F)) + "%") | bold}),
       gauge(progress),
   });
 }
