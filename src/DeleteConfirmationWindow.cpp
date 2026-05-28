@@ -19,15 +19,46 @@ std::string SelectedTaskTitle(const AppState &state) {
   return state.tasks[static_cast<size_t>(state.selectedTask)].title;
 }
 
+std::string SelectedTagName(const AppState &state) {
+  if (state.selectedTag < 0 ||
+      state.selectedTag >= static_cast<int>(state.tags.size())) {
+    return "selected tag";
+  }
+
+  return state.tags[static_cast<size_t>(state.selectedTag)].name;
+}
+
+std::string DeleteTitle(const AppState &state) {
+  return state.deleteTarget == DeleteTarget::Tag ? "Delete tag" : "Delete task";
+}
+
+ftxui::Element DeleteMessage(const AppState &state) {
+  using namespace ftxui;
+
+  if (state.deleteTarget == DeleteTarget::Tag) {
+    return vbox({
+        paragraph("Delete tag \"" + SelectedTagName(state) + "\"?"),
+        paragraph("This removes it from all tasks.") | dim,
+    });
+  }
+
+  return paragraph("Delete task \"" + SelectedTaskTitle(state) + "\"?");
+}
+
+void CloseDeleteConfirmation(AppState &state) {
+  state.showDeleteConfirmation = false;
+  state.activeComponent = state.deleteReturnComponent;
+}
+
 } // namespace
 
 ftxui::Component MakeDeleteConfirmationWindow(AppState &state) {
   using namespace ftxui;
 
   auto renderer = Renderer([&state](bool) {
-    return window(text("Delete task"),
+    return window(text(DeleteTitle(state)),
                   vbox({
-                      paragraph("Delete \"" + SelectedTaskTitle(state) + "\"?"),
+                      DeleteMessage(state),
                       separator(),
                       text("Enter: delete  Esc: cancel") | dim,
                   })) |
@@ -36,14 +67,16 @@ ftxui::Component MakeDeleteConfirmationWindow(AppState &state) {
 
   return CatchEvent(renderer, [&state](Event event) {
     if (event == Event::Escape) {
-      state.showDeleteConfirmation = false;
-      state.activeComponent = ActiveComponent::TaskList;
+      CloseDeleteConfirmation(state);
       return true;
     }
     if (event == Event::Return) {
-      DeleteSelectedTask(state);
-      state.showDeleteConfirmation = false;
-      state.activeComponent = ActiveComponent::TaskList;
+      if (state.deleteTarget == DeleteTarget::Tag) {
+        DeleteSelectedTag(state);
+      } else {
+        DeleteSelectedTask(state);
+      }
+      CloseDeleteConfirmation(state);
       return true;
     }
     return false;

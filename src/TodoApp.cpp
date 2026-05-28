@@ -69,12 +69,12 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
       return mainWindow;
     }
 
-    Element modal = state->showInput        ? inputWindow->Render()
+    Element modal = state->showDeleteConfirmation
+                        ? deleteConfirmationWindow->Render()
+                    : state->showInput      ? inputWindow->Render()
                     : state->showTagInput   ? tagInputWindow->Render()
                     : state->showTagManager ? tagManagerWindow->Render()
-                    : state->showDeleteConfirmation
-                        ? deleteConfirmationWindow->Render()
-                        : helpWindow->Render();
+                                            : helpWindow->Render();
 
     return dbox({
         mainWindow | dim,
@@ -128,6 +128,8 @@ ftxui::Component MakeTodoApp(ftxui::Closure quit) {
     }
     if (event == Event::CtrlD) {
       if (HasSelectedTask(*state)) {
+        state->deleteTarget = DeleteTarget::Task;
+        state->deleteReturnComponent = ActiveComponent::TaskList;
         state->showDeleteConfirmation = true;
         state->activeComponent = ActiveComponent::DeleteConfirmation;
       }

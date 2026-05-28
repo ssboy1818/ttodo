@@ -5,6 +5,11 @@
 
 #include "Task.h"
 
+enum class DeleteTarget {
+  Task,
+  Tag,
+};
+
 struct AppState {
   std::vector<Task> tasks;
   std::vector<Tag> tags;
@@ -14,6 +19,8 @@ struct AppState {
   int selectedTask = 0;
   int selectedTag = 0;
   int activeComponent = 0;
+  int deleteReturnComponent = 0;
+  DeleteTarget deleteTarget = DeleteTarget::Task;
   bool showHelp = false;
   bool showInput = false;
   bool showTagInput = false;

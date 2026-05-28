@@ -86,7 +86,12 @@ ftxui::Component MakeTagInputWindow(AppState &state) {
       return true;
     }
     if (event == Event::CtrlD) {
-      DeleteSelectedTag(state);
+      if (!state.tags.empty()) {
+        state.deleteTarget = DeleteTarget::Tag;
+        state.deleteReturnComponent = ActiveComponent::TagInput;
+        state.showDeleteConfirmation = true;
+        state.activeComponent = ActiveComponent::DeleteConfirmation;
+      }
       return true;
     }
     if (event == Event::Return && input->Focused()) {

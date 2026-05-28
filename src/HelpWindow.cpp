@@ -16,7 +16,7 @@ ftxui::Component MakeHelpWindow(AppState &state) {
                       hbox({text("g") | bold, text("       group by status")}),
                       hbox({text("Space") | bold, text("   next status")}),
                       hbox({text("d") | bold, text("       deprecated")}),
-                      hbox({text("Ctrl+D") | bold, text("  delete task")}),
+                      hbox({text("Ctrl+D") | bold, text("  delete task/tag")}),
                       hbox({text("Up/Down") | bold, text(" select task")}),
                       hbox({text("q") | bold, text("       quit")}),
                       separator(),
